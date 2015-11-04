@@ -1,0 +1,98 @@
+#!/usr/bin/perl
+print "Content-type: text/html\n\n";
+
+my %Networth, %Winners, %Players;
+
+$FacAlign{1} = "Terran Liberation Army";
+$FacAlign{2} = "Free Republic";
+$FacAlign{3} = "Socialist Federation";
+
+$Total = 0;
+for ($i = 1; $i < 4; $i ++) {
+
+	opendir (DIR, "$MainPath/clans/$i");
+	my @Users = readdir (DIR);
+	closedir (DIR);
+
+	foreach $Item (@Users) {
+		if (-f "$MainPath/clans/$i/$Item") {
+			open (IN, "$MainPath/clans/$i/$Item");
+			flock (IN, 1);
+			my @Data = <IN>;
+			close (IN);
+			&chopper(@Data);
+	
+			$Networth{$Item} = @Data[10];
+			$Winners{$i} += @Data[10];			
+			$Players{$i} ++;
+			$Faction{$Item} = $i;
+			$FactionName{$i} = @Data[6];
+
+			print "@Data[6],";
+			$Total ++;
+		}
+	}
+}
+
+my $Count = 0;
+if ($Winners{1} + $Winners{2} + $Winners{3} > 0)
+{
+	$TotalNet = $Winners{1} + $Winners{2} + $Winners{3};
+} else {
+	$TotalNet = 100;
+	$Winners{1} = 33.3;
+	$Winners{2} = 33.3;
+	$Winners{3} = 33.3;
+}
+
+&StatLine;
+
+print qq!
+<head><Title>ASH - Game Rankings</title></HEAD>
+<body bgcolor=black text=white background=$BGPic alink=$FColourOne link=$FColourOne vlink=$FColourOne>
+$Font
+<BR><BR><center>
+
+$BannerCode
+
+</center><table border=0 width=100% cellspacing=0>
+
+$LinkLine
+</table><BR><BR><BR><center>
+
+<table border=0 cellspacing=0 width=70%>
+<TR><TD>$NewFont1 <font color=green>$Side{1} $Players{1} Sub-Factions</TD><TD>$NewFont1 <font color=red>$Side{2} $Players{2} Sub-Factions</TD><TD>$NewFont1 <font color=blue>$Side{3} $Players{3} Sub-Factions</TD></TR>
+<TR><TD colspan=3 valign=bottom>$NewFont1 <center><img src="http://www.bluewand.com/ash/begin.gif" height=24><img src="http://www.bluewand.com/ash/graph1.gif" height=24 width=@{[int($Winners{1}/$TotalNet * 400)]}><img src="http://www.bluewand.com/ash/graph2.gif" width=@{[int($Winners{2}/$TotalNet * 400)]} height=24><img src="http://www.bluewand.com/ash/graph3.gif" width=@{[int($Winners{3}/$TotalNet * 400)]} height=24><img src="http://www.bluewand.com/ash/end.gif" height=24></TD></TR>
+</table>
+<Table width=70% cellspacing=0 border=0>
+<TR><TD>$NewFont1 Rank</TD><TD>$NewFont1 Sub-Faction Name</TD><TD>$NewFont1 Aligned</TD><TD>$NewFont1 Networth</TD></TR>
+<TR height=3><TD colspan=5><HR width=100% height=1></TD></TR>
+!;
+
+
+	if ($Total > 0) {
+		open (OUT, ">$MainPath/Factions.lst");
+		flock (OUT, 2);
+			foreach $User3 (sort {$Networth{$b} <=> $Networth{$a}} keys %Networth) {
+			$Count++;
+	
+			if ($User3 eq $User) {$BTag = "<B><font color=white>";} else {$BTag = "";}
+	
+			open (IN, "$MainPath/clans/$Faction{$User3}/$User3") or print "Cannot open user file (2)-- $MainPath/clans/$Faction{$User3}/$User3";
+			flock (IN, 1);
+			my @Datas = <IN>;
+			close (IN);
+			&chopper (@Datas);
+		
+			print qq!<TR><TD>$NewFont2 $BTag $Count</TD><TD>$NewFont2$BTag $User3</tD><TD>$NewFont2 $B$FacAlign{$Faction{$User3}}</TD><TD>$NewFont2 $BTag@{[&Space($Networth{$User3})]}</TD></TR>!;
+			if ($Count % 10 == 0) {print qq!<TR height=3><TD colspan=5>$NewFont2 <center><HR width=80% height=1></TD></TR>!;}
+			print OUT "$User3\n";
+		}
+		close (OUT);
+	} else {
+			print qq!<TR><TD colspan=4 align=center>$NewFont2 There are no clans to be ranked yet.</TD></TR>!;
+
+	}
+print qq!</table>!;
+
+print "";
